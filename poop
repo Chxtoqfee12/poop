@@ -1,13 +1,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-
 local player = Players.LocalPlayer
 
 -- โหลด Rayfield
 local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/script-admin-chx/refs/heads/main/chx.lib'))()
 
--- สร้าง Window หลัก
+-- สร้าง Window
 local Window = Rayfield:CreateWindow({
     Name = "💩 Auto Farm UI",
     LoadingTitle = "ออโต้ขึ้ ",
@@ -15,7 +13,7 @@ local Window = Rayfield:CreateWindow({
 })
 
 ----------------------------------------------------
--- Tab: Auto Poop
+-- Tab Auto Poop
 ----------------------------------------------------
 local poopTab = Window:CreateTab("Auto Poop", "zap")
 
@@ -24,10 +22,10 @@ local autoDrop = false
 local poopSpeed = 1
 local lbThreshold = 5
 
--- Slider ตั้งค่า Poop Speed
+-- Slider Poop Speed
 poopTab:CreateSlider({
     Name = "Poop Speed (sec)",
-    Range = {0.3, 5},
+    Range = {0.3,5},
     Increment = 0.1,
     Suffix = "s",
     CurrentValue = 1,
@@ -37,10 +35,10 @@ poopTab:CreateSlider({
     end,
 })
 
--- Slider ตั้งค่า LB Threshold
+-- Slider LB Threshold
 poopTab:CreateSlider({
     Name = "LB Threshold",
-    Range = {1, 50},
+    Range = {1,50},
     Increment = 1,
     Suffix = "lbs",
     CurrentValue = lbThreshold,
@@ -53,9 +51,7 @@ poopTab:CreateSlider({
 -- ฟังก์ชันดึง lb จากชื่อไอเท็ม
 local function getLBFromName(itemName)
     local lbStr = itemName:match("%(([%d%.]+) lbs%)")
-    if lbStr then
-        return tonumber(lbStr)
-    end
+    if lbStr then return tonumber(lbStr) end
     return nil
 end
 
@@ -63,16 +59,21 @@ end
 local function checkAndDropItem(item)
     local lb = getLBFromName(item.Name)
     if lb and lb < lbThreshold then
-        -- ถือไอเท็มขึ้นมือ
+        -- ย้ายไป Character
+        item.Parent = player.Character
+        task.wait(0.05)
+
+        -- ถือไอเท็มด้วย Remote SetToolGrip
         if ReplicatedStorage:FindFirstChild("SetToolGrip") then
-            local args = {item, CFrame.new(0,0,0)}
+            local args = {item, CFrame.new(0,0,0)} -- ใช้ CFrame ตาม Remote Spy
             ReplicatedStorage.SetToolGrip:FireServer(unpack(args))
             task.wait(0.1)
         end
 
-        -- กด Backspace เพื่อทิ้ง
-        UserInputService.InputBegan:Fire({KeyCode = Enum.KeyCode.Backspace})
-        task.wait(0.1)
+        -- ทิ้งด้วย Remote DropItem ของเกม
+        if ReplicatedStorage:FindFirstChild("DropItem") then
+            ReplicatedStorage.DropItem:FireServer(item)
+        end
     end
 end
 
@@ -86,7 +87,7 @@ local function dropLowLBItems()
     end
 end
 
--- Toggle เปิด/ปิด Auto Poop
+-- Toggle Auto Poop
 poopTab:CreateToggle({
     Name = "Enable Auto Poop",
     CurrentValue = false,
@@ -96,7 +97,6 @@ poopTab:CreateToggle({
         if autoPoop then
             task.spawn(function()
                 while autoPoop do
-                    -- เริ่ม Poop ของ
                     ReplicatedStorage:WaitForChild("PoopChargeStart"):FireServer()
                     task.wait(0.2)
                     ReplicatedStorage:WaitForChild("PoopEvent"):FireServer(1)
@@ -107,7 +107,7 @@ poopTab:CreateToggle({
     end,
 })
 
--- Toggle เปิด/ปิด Auto Drop แยก
+-- Toggle Auto Drop (แยกจาก Poop)
 poopTab:CreateToggle({
     Name = "Enable Auto Drop Low LB Items",
     CurrentValue = false,
