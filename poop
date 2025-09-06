@@ -1,4 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
 
 -- โหลด Rayfield
 local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/script-admin-chx/refs/heads/main/chx.lib'))()
@@ -17,10 +21,13 @@ local poopTab = Window:CreateTab("Auto Poop", "zap")
 
 local autoPoop = false
 local poopSpeed = 1
+local lbThreshold = 5 -- ค่าเริ่มต้นทิ้งถ้าน้อยกว่า 5 lbs
+local autoDrop = true -- เปิด Auto Drop
 
+-- Slider สำหรับตั้งค่า Poop Speed
 poopTab:CreateSlider({
     Name = "Poop Speed (sec)",
-    Range = {0.3, 5}, -- จำกัดต่ำสุด 0.3 วิ (กันพัง)
+    Range = {0.3, 5}, 
     Increment = 0.1,
     Suffix = "s",
     CurrentValue = 1,
@@ -30,20 +37,79 @@ poopTab:CreateSlider({
     end,
 })
 
+-- Slider สำหรับตั้งค่า LB Threshold
+poopTab:CreateSlider({
+    Name = "LB Threshold",
+    Range = {1, 50}, 
+    Increment = 1,
+    Suffix = "lbs",
+    CurrentValue = lbThreshold,
+    Flag = "LBThreshold",
+    Callback = function(Value)
+        lbThreshold = Value
+    end,
+})
+
+-- ฟังก์ชันดึง lb จากชื่อไอเท็ม
+local function getLBFromName(itemName)
+    local lbStr = itemName:match("%(([%d%.]+) lbs%)")
+    if lbStr then
+        return tonumber(lbStr)
+    end
+    return nil
+end
+
+-- ฟังก์ชันถือไอเท็มและทิ้งถ้า lb ต่ำ
+local function checkAndDropItem(item)
+    local lb = getLBFromName(item.Name)
+    if lb and lb < lbThreshold then
+        -- ถือไอเท็มขึ้นมือด้วย Remote
+        if ReplicatedStorage:FindFirstChild("SetToolGrip") then
+            local args = {
+                item,
+                CFrame.new(0,0,0) -- สามารถปรับ CFrame ตามต้องการ
+            }
+            ReplicatedStorage.SetToolGrip:FireServer(unpack(args))
+            task.wait(0.1)
+        end
+
+        -- ทิ้งไอเท็มด้วย Backspace หรือ Remote Drop
+        UserInputService.InputBegan:Fire({KeyCode = Enum.KeyCode.Backspace})
+        task.wait(0.1)
+    end
+end
+
+-- ฟังก์ชันตรวจสอบทั้งหมดใน Backpack
+local function dropLowLBItems()
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            checkAndDropItem(item)
+        end
+    end
+end
+
+-- Toggle สำหรับเปิด Auto Poop
 poopTab:CreateToggle({
-    Name = "Enable Auto Poop",
+    Name = "Enable Auto Poop + Auto Drop",
     CurrentValue = false,
-    Flag = "AutoPoop",
+    Flag = "AutoPoopDrop",
     Callback = function(Value)
         autoPoop = Value
         if autoPoop then
             task.spawn(function()
                 while autoPoop do
-                    -- เริ่มมินิเกม
+                    -- เริ่มมินิเกม Poop
                     ReplicatedStorage:WaitForChild("PoopChargeStart"):FireServer()
                     task.wait(0.2)
-                    -- จบมินิเกมแบบ auto (ได้ของทันที)
+                    -- จบมินิเกมแบบ Auto
                     ReplicatedStorage:WaitForChild("PoopEvent"):FireServer(1)
+
+                    -- ตรวจสอบไอเท็มทั้งหมดในกระเป๋า
+                    if autoDrop then
+                        dropLowLBItems()
+                    end
+
                     task.wait(poopSpeed)
                 end
             end)
