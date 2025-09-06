@@ -20,14 +20,14 @@ local Window = Rayfield:CreateWindow({
 local poopTab = Window:CreateTab("Auto Poop", "zap")
 
 local autoPoop = false
+local autoDrop = false
 local poopSpeed = 1
-local lbThreshold = 5 -- ค่าเริ่มต้นทิ้งถ้าน้อยกว่า 5 lbs
-local autoDrop = true -- เปิด Auto Drop
+local lbThreshold = 5
 
--- Slider สำหรับตั้งค่า Poop Speed
+-- Slider ตั้งค่า Poop Speed
 poopTab:CreateSlider({
     Name = "Poop Speed (sec)",
-    Range = {0.3, 5}, 
+    Range = {0.3, 5},
     Increment = 0.1,
     Suffix = "s",
     CurrentValue = 1,
@@ -37,10 +37,10 @@ poopTab:CreateSlider({
     end,
 })
 
--- Slider สำหรับตั้งค่า LB Threshold
+-- Slider ตั้งค่า LB Threshold
 poopTab:CreateSlider({
     Name = "LB Threshold",
-    Range = {1, 50}, 
+    Range = {1, 50},
     Increment = 1,
     Suffix = "lbs",
     CurrentValue = lbThreshold,
@@ -59,27 +59,24 @@ local function getLBFromName(itemName)
     return nil
 end
 
--- ฟังก์ชันถือไอเท็มและทิ้งถ้า lb ต่ำ
+-- ฟังก์ชันถือและทิ้งไอเท็มต่ำกว่า lb
 local function checkAndDropItem(item)
     local lb = getLBFromName(item.Name)
     if lb and lb < lbThreshold then
-        -- ถือไอเท็มขึ้นมือด้วย Remote
+        -- ถือไอเท็มขึ้นมือ
         if ReplicatedStorage:FindFirstChild("SetToolGrip") then
-            local args = {
-                item,
-                CFrame.new(0,0,0) -- สามารถปรับ CFrame ตามต้องการ
-            }
+            local args = {item, CFrame.new(0,0,0)}
             ReplicatedStorage.SetToolGrip:FireServer(unpack(args))
             task.wait(0.1)
         end
 
-        -- ทิ้งไอเท็มด้วย Backspace หรือ Remote Drop
+        -- กด Backspace เพื่อทิ้ง
         UserInputService.InputBegan:Fire({KeyCode = Enum.KeyCode.Backspace})
         task.wait(0.1)
     end
 end
 
--- ฟังก์ชันตรวจสอบทั้งหมดใน Backpack
+-- ฟังก์ชันตรวจสอบ Backpack
 local function dropLowLBItems()
     local backpack = player:FindFirstChild("Backpack")
     if backpack then
@@ -89,28 +86,39 @@ local function dropLowLBItems()
     end
 end
 
--- Toggle สำหรับเปิด Auto Poop
+-- Toggle เปิด/ปิด Auto Poop
 poopTab:CreateToggle({
-    Name = "Enable Auto Poop + Auto Drop",
+    Name = "Enable Auto Poop",
     CurrentValue = false,
-    Flag = "AutoPoopDrop",
+    Flag = "AutoPoop",
     Callback = function(Value)
         autoPoop = Value
         if autoPoop then
             task.spawn(function()
                 while autoPoop do
-                    -- เริ่มมินิเกม Poop
+                    -- เริ่ม Poop ของ
                     ReplicatedStorage:WaitForChild("PoopChargeStart"):FireServer()
                     task.wait(0.2)
-                    -- จบมินิเกมแบบ Auto
                     ReplicatedStorage:WaitForChild("PoopEvent"):FireServer(1)
-
-                    -- ตรวจสอบไอเท็มทั้งหมดในกระเป๋า
-                    if autoDrop then
-                        dropLowLBItems()
-                    end
-
                     task.wait(poopSpeed)
+                end
+            end)
+        end
+    end,
+})
+
+-- Toggle เปิด/ปิด Auto Drop แยก
+poopTab:CreateToggle({
+    Name = "Enable Auto Drop Low LB Items",
+    CurrentValue = false,
+    Flag = "AutoDrop",
+    Callback = function(Value)
+        autoDrop = Value
+        if autoDrop then
+            task.spawn(function()
+                while autoDrop do
+                    dropLowLBItems()
+                    task.wait(0.5) -- ตรวจสอบทุก 0.5 วิ
                 end
             end)
         end
