@@ -55,33 +55,44 @@ local function getLBFromName(itemName)
     return nil
 end
 
+-- ฟังก์ชันถือไอเท็มทั้งหมดใน Character
+local function equipAllItemsInCharacter()
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            -- ย้ายไป Character
+            item.Parent = player.Character
+            task.wait(0.05)
+
+            -- ถือไอเท็มด้วย Remote SetToolGrip
+            if ReplicatedStorage:FindFirstChild("SetToolGrip") then
+                -- ใช้ CFrame จาก Remote Spy
+                local args = {
+                    item,
+                    CFrame.new(0.1, 0, 0.52, 0.064, -0.990, -0.121, 0.498, 0.138, -0.856, 0.865, -0.0058, 0.502)
+                }
+                ReplicatedStorage.SetToolGrip:FireServer(unpack(args))
+                task.wait(0.05)
+            end
+        end
+    end
+end
+
 -- ฟังก์ชันถือและทิ้งไอเท็มต่ำกว่า lb
 local function checkAndDropItem(item)
     local lb = getLBFromName(item.Name)
     if lb and lb < lbThreshold then
-        -- ย้ายไป Character
-        item.Parent = player.Character
-        task.wait(0.05)
-
-        -- ถือไอเท็มด้วย Remote SetToolGrip
-        if ReplicatedStorage:FindFirstChild("SetToolGrip") then
-            local args = {item, CFrame.new(0,0,0)} -- ใช้ CFrame ตาม Remote Spy
-            ReplicatedStorage.SetToolGrip:FireServer(unpack(args))
-            task.wait(0.1)
-        end
-
-        -- ทิ้งด้วย Remote DropItem ของเกม
+        -- ถือไอเท็มอยู่แล้ว (ย้ายไป Character)
         if ReplicatedStorage:FindFirstChild("DropItem") then
             ReplicatedStorage.DropItem:FireServer(item)
         end
     end
 end
 
--- ฟังก์ชันตรวจสอบ Backpack
+-- ฟังก์ชันตรวจสอบทั้งหมดใน Character
 local function dropLowLBItems()
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        for _, item in pairs(backpack:GetChildren()) do
+    for _, item in pairs(player.Character:GetChildren()) do
+        if item:IsA("Tool") then
             checkAndDropItem(item)
         end
     end
@@ -107,7 +118,7 @@ poopTab:CreateToggle({
     end,
 })
 
--- Toggle Auto Drop (แยกจาก Poop)
+-- Toggle Auto Drop (แยก)
 poopTab:CreateToggle({
     Name = "Enable Auto Drop Low LB Items",
     CurrentValue = false,
@@ -117,8 +128,9 @@ poopTab:CreateToggle({
         if autoDrop then
             task.spawn(function()
                 while autoDrop do
-                    dropLowLBItems()
-                    task.wait(0.5) -- ตรวจสอบทุก 0.5 วิ
+                    equipAllItemsInCharacter() -- ถือของทั้งหมดก่อน
+                    dropLowLBItems()           -- ทิ้งของต่ำกว่า lb
+                    task.wait(0.5)
                 end
             end)
         end
