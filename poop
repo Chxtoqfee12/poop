@@ -1,31 +1,26 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
 
 -- โหลด Rayfield
-local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/script-admin-chx/refs/heads/main/chx.lib'))()
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua'))()
 
--- สร้าง Window
+-- สร้าง Window หลัก
 local Window = Rayfield:CreateWindow({
     Name = "💩 Auto Farm UI",
-    LoadingTitle = "ออโต้ขึ้ ",
-    LoadingSubtitle = "By อีหนึ่ง",
+    LoadingTitle = "Auto System",
+    LoadingSubtitle = "By Fluke",
 })
 
 ----------------------------------------------------
--- Tab Auto Poop
+-- Tab: Auto Poop
 ----------------------------------------------------
 local poopTab = Window:CreateTab("Auto Poop", "zap")
 
 local autoPoop = false
-local autoDrop = false
 local poopSpeed = 1
-local lbThreshold = 5
 
--- Slider Poop Speed
 poopTab:CreateSlider({
     Name = "Poop Speed (sec)",
-    Range = {0.3,5},
+    Range = {0.3, 5}, -- จำกัดต่ำสุด 0.3 วิ (กันพัง)
     Increment = 0.1,
     Suffix = "s",
     CurrentValue = 1,
@@ -35,71 +30,6 @@ poopTab:CreateSlider({
     end,
 })
 
--- Slider LB Threshold
-poopTab:CreateSlider({
-    Name = "LB Threshold",
-    Range = {1,50},
-    Increment = 1,
-    Suffix = "lbs",
-    CurrentValue = lbThreshold,
-    Flag = "LBThreshold",
-    Callback = function(Value)
-        lbThreshold = Value
-    end,
-})
-
--- ฟังก์ชันดึง lb จากชื่อไอเท็ม
-local function getLBFromName(itemName)
-    local lbStr = itemName:match("%(([%d%.]+) lbs%)")
-    if lbStr then return tonumber(lbStr) end
-    return nil
-end
-
--- ฟังก์ชันถือไอเท็มต่ำกว่า lb ทีละชิ้นเพื่อลดแล็ค
-local function equipLowLBItemsInCharacter()
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        for _, item in pairs(backpack:GetChildren()) do
-            local lb = getLBFromName(item.Name)
-            if lb and lb < lbThreshold then
-                -- ย้ายไป Character
-                item.Parent = player.Character
-                task.wait(0.1) -- รอช้า ๆ ลดแล็ค
-
-                -- ถือไอเท็มด้วย Remote SetToolGrip
-                if ReplicatedStorage:FindFirstChild("SetToolGrip") then
-                    local args = {
-                        item,
-                        CFrame.new(0.1, 0, 0.52, 0.064, -0.990, -0.121, 0.498, 0.138, -0.856, 0.865, -0.0058, 0.502)
-                    }
-                    ReplicatedStorage.SetToolGrip:FireServer(unpack(args))
-                    task.wait(0.2) -- รอ 0.2 วิ ก่อนถืออันถัดไป
-                end
-            end
-        end
-    end
-end
-
--- ฟังก์ชันเช็คและทิ้งไอเท็มต่ำกว่า lb
-local function checkAndDropItem(item)
-    local lb = getLBFromName(item.Name)
-    if lb and lb < lbThreshold then
-        if ReplicatedStorage:FindFirstChild("DropItem") then
-            ReplicatedStorage.DropItem:FireServer(item)
-        end
-    end
-end
-
--- ฟังก์ชันตรวจสอบไอเท็มทั้งหมดใน Character
-local function dropLowLBItems()
-    for _, item in pairs(player.Character:GetChildren()) do
-        if item:IsA("Tool") then
-            checkAndDropItem(item)
-        end
-    end
-end
-
--- Toggle Auto Poop
 poopTab:CreateToggle({
     Name = "Enable Auto Poop",
     CurrentValue = false,
@@ -109,39 +39,14 @@ poopTab:CreateToggle({
         if autoPoop then
             task.spawn(function()
                 while autoPoop do
-                    -- เริ่ม Poop ของ
+                    -- เริ่มมินิเกม
                     ReplicatedStorage:WaitForChild("PoopChargeStart"):FireServer()
                     task.wait(0.2)
+                    -- จบมินิเกมแบบ auto (ได้ของทันที)
                     ReplicatedStorage:WaitForChild("PoopEvent"):FireServer(1)
-                    task.wait(0.05)
-
-                    -- Auto Drop หลัง Poop ของใหม่ทันที
-                    if autoDrop then
-                        equipLowLBItemsInCharacter() -- ถือเฉพาะของ lb ต่ำ
-                        dropLowLBItems()             -- ทิ้งของต่ำกว่า lb
-                    end
-
                     task.wait(poopSpeed)
                 end
             end)
         end
-    end,
-})
-
--- Toggle Auto Drop (แยก)
-poopTab:CreateToggle({
-    Name = "Enable Auto Drop Low LB Items",
-    CurrentValue = false,
-    Flag = "AutoDrop",
-    Callback = function(Value)
-        autoDrop = Value
-        -- สามารถเปิดตรวจสอบต่อเนื่องได้ถ้าต้องการ
-        -- task.spawn(function()
-        --     while autoDrop do
-        --         equipLowLBItemsInCharacter()
-        --         dropLowLBItems()
-        --         task.wait(0.5)
-        --     end
-        -- end)
     end,
 })
