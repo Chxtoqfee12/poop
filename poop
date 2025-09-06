@@ -1,0 +1,52 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- โหลด Rayfield
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua'))()
+
+-- สร้าง Window หลัก
+local Window = Rayfield:CreateWindow({
+    Name = "💩 Auto Farm UI",
+    LoadingTitle = "Auto System",
+    LoadingSubtitle = "By Fluke",
+})
+
+----------------------------------------------------
+-- Tab: Auto Poop
+----------------------------------------------------
+local poopTab = Window:CreateTab("Auto Poop", "zap")
+
+local autoPoop = false
+local poopSpeed = 1
+
+poopTab:CreateSlider({
+    Name = "Poop Speed (sec)",
+    Range = {0.3, 5}, -- จำกัดต่ำสุด 0.3 วิ (กันพัง)
+    Increment = 0.1,
+    Suffix = "s",
+    CurrentValue = 1,
+    Flag = "PoopSpeed",
+    Callback = function(Value)
+        poopSpeed = Value
+    end,
+})
+
+poopTab:CreateToggle({
+    Name = "Enable Auto Poop",
+    CurrentValue = false,
+    Flag = "AutoPoop",
+    Callback = function(Value)
+        autoPoop = Value
+        if autoPoop then
+            task.spawn(function()
+                while autoPoop do
+                    -- เริ่มมินิเกม
+                    ReplicatedStorage:WaitForChild("PoopChargeStart"):FireServer()
+                    task.wait(0.2)
+                    -- จบมินิเกมแบบ auto (ได้ของทันที)
+                    ReplicatedStorage:WaitForChild("PoopEvent"):FireServer(1)
+                    task.wait(poopSpeed)
+                end
+            end)
+        end
+    end,
+})
