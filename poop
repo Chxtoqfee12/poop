@@ -55,41 +55,42 @@ local function getLBFromName(itemName)
     return nil
 end
 
--- ฟังก์ชันถือไอเท็มทั้งหมดใน Character
-local function equipAllItemsInCharacter()
+-- ฟังก์ชันถือไอเท็มต่ำกว่า lb ทีละชิ้นเพื่อลดแล็ค
+local function equipLowLBItemsInCharacter()
     local backpack = player:FindFirstChild("Backpack")
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
-            -- ย้ายไป Character
-            item.Parent = player.Character
-            task.wait(0.05)
+            local lb = getLBFromName(item.Name)
+            if lb and lb < lbThreshold then
+                -- ย้ายไป Character
+                item.Parent = player.Character
+                task.wait(0.1) -- รอช้า ๆ ลดแล็ค
 
-            -- ถือไอเท็มด้วย Remote SetToolGrip
-            if ReplicatedStorage:FindFirstChild("SetToolGrip") then
-                -- ใช้ CFrame จาก Remote Spy
-                local args = {
-                    item,
-                    CFrame.new(0.1, 0, 0.52, 0.064, -0.990, -0.121, 0.498, 0.138, -0.856, 0.865, -0.0058, 0.502)
-                }
-                ReplicatedStorage.SetToolGrip:FireServer(unpack(args))
-                task.wait(0.05)
+                -- ถือไอเท็มด้วย Remote SetToolGrip
+                if ReplicatedStorage:FindFirstChild("SetToolGrip") then
+                    local args = {
+                        item,
+                        CFrame.new(0.1, 0, 0.52, 0.064, -0.990, -0.121, 0.498, 0.138, -0.856, 0.865, -0.0058, 0.502)
+                    }
+                    ReplicatedStorage.SetToolGrip:FireServer(unpack(args))
+                    task.wait(0.2) -- รอ 0.2 วิ ก่อนถืออันถัดไป
+                end
             end
         end
     end
 end
 
--- ฟังก์ชันถือและทิ้งไอเท็มต่ำกว่า lb
+-- ฟังก์ชันเช็คและทิ้งไอเท็มต่ำกว่า lb
 local function checkAndDropItem(item)
     local lb = getLBFromName(item.Name)
     if lb and lb < lbThreshold then
-        -- ถือไอเท็มอยู่แล้ว (ย้ายไป Character)
         if ReplicatedStorage:FindFirstChild("DropItem") then
             ReplicatedStorage.DropItem:FireServer(item)
         end
     end
 end
 
--- ฟังก์ชันตรวจสอบทั้งหมดใน Character
+-- ฟังก์ชันตรวจสอบไอเท็มทั้งหมดใน Character
 local function dropLowLBItems()
     for _, item in pairs(player.Character:GetChildren()) do
         if item:IsA("Tool") then
@@ -108,9 +109,18 @@ poopTab:CreateToggle({
         if autoPoop then
             task.spawn(function()
                 while autoPoop do
+                    -- เริ่ม Poop ของ
                     ReplicatedStorage:WaitForChild("PoopChargeStart"):FireServer()
                     task.wait(0.2)
                     ReplicatedStorage:WaitForChild("PoopEvent"):FireServer(1)
+                    task.wait(0.05)
+
+                    -- Auto Drop หลัง Poop ของใหม่ทันที
+                    if autoDrop then
+                        equipLowLBItemsInCharacter() -- ถือเฉพาะของ lb ต่ำ
+                        dropLowLBItems()             -- ทิ้งของต่ำกว่า lb
+                    end
+
                     task.wait(poopSpeed)
                 end
             end)
@@ -125,14 +135,13 @@ poopTab:CreateToggle({
     Flag = "AutoDrop",
     Callback = function(Value)
         autoDrop = Value
-        if autoDrop then
-            task.spawn(function()
-                while autoDrop do
-                    equipAllItemsInCharacter() -- ถือของทั้งหมดก่อน
-                    dropLowLBItems()           -- ทิ้งของต่ำกว่า lb
-                    task.wait(0.5)
-                end
-            end)
-        end
+        -- สามารถเปิดตรวจสอบต่อเนื่องได้ถ้าต้องการ
+        -- task.spawn(function()
+        --     while autoDrop do
+        --         equipLowLBItemsInCharacter()
+        --         dropLowLBItems()
+        --         task.wait(0.5)
+        --     end
+        -- end)
     end,
 })
