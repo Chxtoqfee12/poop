@@ -6,8 +6,8 @@ local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxt
 -- สร้าง Window หลัก
 local Window = Rayfield:CreateWindow({
     Name = "💩 Auto Farm UI",
-    LoadingTitle = "Auto System",
-    LoadingSubtitle = "By Chx",
+    LoadingTitle = "ออโต้ขึ้ ",
+    LoadingSubtitle = "By อีหนึ่ง",
 })
 
 ----------------------------------------------------
